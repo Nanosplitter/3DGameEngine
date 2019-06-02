@@ -2,13 +2,20 @@ package engine;
 
 import java.awt.AWTException;
 import java.awt.Color;
+import java.awt.Cursor;
 import java.awt.Graphics;
 import java.awt.GraphicsDevice;
 import java.awt.GraphicsEnvironment;
+import java.awt.Point;
+import java.awt.Toolkit;
 import java.awt.image.BufferStrategy;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferInt;
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
+
+import javax.imageio.ImageIO;
 import javax.swing.JFrame;
 
 public class Game extends JFrame implements Runnable{
@@ -18,6 +25,8 @@ public class Game extends JFrame implements Runnable{
 	public int mapHeight = 15;
 	private Thread thread;
 	private boolean running;
+	public int width;
+	public int height;
 	private BufferedImage image;
 	public int[] pixels;
 	public ArrayList<Texture> textures;
@@ -42,9 +51,11 @@ public class Game extends JFrame implements Runnable{
 			{1,1,1,1,1,1,1,4,4,4,4,4,4,4,4}
 		};
 	public Game() throws AWTException {
+		BufferedImage cursorImg = new BufferedImage(16, 16, BufferedImage.TYPE_INT_ARGB);
+		Cursor blankCursor = Toolkit.getDefaultToolkit().createCustomCursor(cursorImg, new Point(0, 0), "blank cursor");
 		GraphicsDevice gd = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice();
-		int width = gd.getDisplayMode().getWidth()/2;
-		int height = gd.getDisplayMode().getHeight()/2;
+		width = (gd.getDisplayMode().getWidth() - 100);
+		height = (gd.getDisplayMode().getHeight() - 50);
 		thread = new Thread(this);
 		image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
 		pixels = ((DataBufferInt)image.getRaster().getDataBuffer()).getData();
@@ -57,6 +68,7 @@ public class Game extends JFrame implements Runnable{
 		screen = new Screen(map, mapWidth, mapHeight, textures, width, height);
 		addKeyListener(camera);
 		addMouseMotionListener(camera);
+		this.addMouseListener(camera);
 		setSize(width, height);
 		setResizable(false);
 		setTitle("3D Engine");
@@ -64,6 +76,7 @@ public class Game extends JFrame implements Runnable{
 		setBackground(Color.black);
 		setLocationRelativeTo(null);
 		setVisible(true);
+		getContentPane().setCursor(blankCursor);
 		start();
 	}
 	private synchronized void start() {
@@ -78,7 +91,7 @@ public class Game extends JFrame implements Runnable{
 			e.printStackTrace();
 		}
 	}
-	public void render() {
+	public void render() throws IOException {
 		BufferStrategy bs = getBufferStrategy();
 		if(bs == null) {
 			createBufferStrategy(3);
@@ -86,6 +99,30 @@ public class Game extends JFrame implements Runnable{
 		}
 		Graphics g = bs.getDrawGraphics();
 		g.drawImage(image, 0, 0, image.getWidth(), image.getHeight(), null);
+		//Draw minimap
+		for ( int x = 30; x <= 240; x += 15 ) {
+			 for ( int y = 30; y <= 240; y += 15 ) {
+				 if (map[(x/15) - 2][(y/15) - 2] == 0) {
+					 g.drawRect( y, x, 15, 15 );
+				 } else {
+					 g.fillRect(y, x, 15, 15);
+				 }
+			 }
+		}
+		g.setColor(Color.RED);
+		g.fillOval((int)Math.round((camera.yPos * 15) + 25), (int)Math.round((camera.xPos * 15) + 25), 10, 10);
+		//g.drawChars(Double.toString(camera.xPos).toCharArray(), 1, 30, 500, 500);
+		//System.out.println("CameraX: " + (int)Math.round(camera.xPos * 30));
+		//System.out.println("CameraY: " + (int)Math.round(camera.yPos * 30));
+		//System.out.println("fire:" + camera.fire);
+		if (!camera.fire) {
+			g.drawImage(ImageIO.read(new File("res/rifleStill.png")), (width/2) - 77, height - 90, null);
+		} else {
+			g.drawImage(ImageIO.read(new File("res/rifleFireBig.png")), (width/2) - 77, height - 90, null);
+		}
+		
+		g.fillRect((width/2) - 1, (height/2) - 6, 2, 12);
+		g.fillRect((width/2) - 6, (height/2) - 1, 12, 2);
 		bs.show();
 	}
 	public void run() {
@@ -104,7 +141,12 @@ public class Game extends JFrame implements Runnable{
 				camera.update(map);
 				delta--;
 			}
-			render();//displays to the screen unrestricted time
+			try {
+				render();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}//displays to the screen unrestricted time
 		}
 	}
 	public static void main(String [] args) throws AWTException {
