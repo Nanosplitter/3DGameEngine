@@ -14,6 +14,7 @@ import java.awt.image.DataBufferInt;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 import javax.imageio.ImageIO;
 import javax.swing.JFrame;
@@ -21,8 +22,8 @@ import javax.swing.JFrame;
 public class Game extends JFrame implements Runnable{
 	
 	private static final long serialVersionUID = 1L;
-	public int mapWidth = 15;
-	public int mapHeight = 15;
+	public int mapWidth;
+	public int mapHeight;
 	private Thread thread;
 	private boolean running;
 	public int width;
@@ -32,25 +33,25 @@ public class Game extends JFrame implements Runnable{
 	public ArrayList<Texture> textures;
 	public Camera camera;
 	public Screen screen;
-	public static int[][] map = 
-		{
-			{1,1,1,1,1,1,1,1,2,2,2,2,2,2,2},
-			{1,0,0,0,0,0,0,0,2,0,0,0,0,0,2},
-			{1,0,3,3,3,3,3,0,0,0,0,0,0,0,2},
-			{1,0,3,0,0,0,3,0,2,0,0,0,0,0,2},
-			{1,0,3,0,0,0,3,0,2,2,2,0,2,2,2},
-			{1,0,3,0,0,0,3,0,2,0,0,0,0,0,2},
-			{1,0,3,3,0,3,3,0,2,0,0,0,0,0,2},
-			{1,0,0,0,0,0,0,0,2,0,0,0,0,0,2},
-			{1,1,1,1,1,1,1,1,4,4,4,0,4,4,4},
-			{1,0,0,0,0,0,1,4,0,0,0,0,0,0,4},
-			{1,0,0,0,0,0,1,4,0,0,0,0,0,0,4},
-			{1,0,0,0,0,0,1,4,0,3,3,3,3,0,4},
-			{1,0,0,0,0,0,1,4,0,3,3,3,3,0,4},
-			{1,0,0,0,0,0,0,0,0,0,0,0,0,0,4},
-			{1,1,1,1,1,1,1,4,4,4,4,4,4,4,4}
-		};
+	public MazeGen mg = new MazeGen(10);
+	public static int[][] map;
 	public Game() throws AWTException {
+		map = mg.getMaze(4, 10);
+		mapWidth = map[0].length;
+		mapHeight = map.length;
+		String[] strArr = new String[map[0].length];
+		
+		for (int x = 0; x < map[0].length; x++) {
+			String row = "";
+			for (int y = 0; y < map.length; y++) {
+				row += map[y][x];
+			}
+			strArr[x] = row;
+		}
+		for (String s : strArr) {
+			System.out.println(s);
+		}
+		
 		BufferedImage cursorImg = new BufferedImage(16, 16, BufferedImage.TYPE_INT_ARGB);
 		Cursor blankCursor = Toolkit.getDefaultToolkit().createCustomCursor(cursorImg, new Point(0, 0), "blank cursor");
 		GraphicsDevice gd = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice();
@@ -64,7 +65,7 @@ public class Game extends JFrame implements Runnable{
 		textures.add(Texture.brick);
 		textures.add(Texture.bluestone);
 		textures.add(Texture.stone);
-		camera = new Camera(4.5, 4.5, 1, 0, 0, -.66);
+		camera = new Camera(1.5, 1.5, 1, 0, 0, -.66);
 		screen = new Screen(map, mapWidth, mapHeight, textures, width, height);
 		addKeyListener(camera);
 		addMouseMotionListener(camera);
@@ -99,13 +100,14 @@ public class Game extends JFrame implements Runnable{
 		}
 		Graphics g = bs.getDrawGraphics();
 		g.drawImage(image, 0, 0, image.getWidth(), image.getHeight(), null);
+		//System.out.println(mapHeight);
 		//Draw minimap
-		for ( int x = 30; x <= 240; x += 15 ) {
-			 for ( int y = 30; y <= 240; y += 15 ) {
-				 if (map[(x/15) - 2][(y/15) - 2] == 0) {
-					 g.drawRect( y, x, 15, 15 );
+		for ( int x = 30; x <= 15 * (mapWidth + 1); x += 15 ) {
+			 for ( int y = 30; y <= 15 * (mapHeight + 1); y += 15 ) {
+				 if (map[(y/15) - 2][(x/15) - 2] == 0) {
+					 g.drawRect( x, y, 15, 15 );
 				 } else {
-					 g.fillRect(y, x, 15, 15);
+					 g.fillRect(x, y, 15, 15);
 				 }
 			 }
 		}
@@ -116,9 +118,9 @@ public class Game extends JFrame implements Runnable{
 		//System.out.println("CameraY: " + (int)Math.round(camera.yPos * 30));
 		//System.out.println("fire:" + camera.fire);
 		if (!camera.fire) {
-			g.drawImage(ImageIO.read(new File("res/rifleStill.png")), (width/2) - 77, height - 90, null);
+			g.drawImage(ImageIO.read(new File("res/rifleStill.png")), (width/2) - 415, height - 382, null);
 		} else {
-			g.drawImage(ImageIO.read(new File("res/rifleFireBig.png")), (width/2) - 77, height - 90, null);
+			g.drawImage(ImageIO.read(new File("res/rifleFireBig.png")), (width/2) - 415, height - 497, null);
 		}
 		
 		g.fillRect((width/2) - 1, (height/2) - 6, 2, 12);
@@ -127,7 +129,7 @@ public class Game extends JFrame implements Runnable{
 	}
 	public void run() {
 		long lastTime = System.nanoTime();
-		final double ns = 1000000000.0 / 60.0;//60 times per second
+		final double ns = 1000000000.0 / 45.0;//60 times per second
 		double delta = 0;
 		requestFocus();
 		while(running) {
